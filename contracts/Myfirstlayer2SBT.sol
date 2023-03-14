@@ -4,44 +4,37 @@ pragma solidity ^0.8.17;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "erc721a/contracts/ERC721A.sol";
+import "erc721a/contracts/extensions/ERC721AQueryable.sol";
 
-contract Myfirstlayer2SBT is Ownable, ERC721A {
-    string public baseURI;
+contract Myfirstlayer2SBT is Ownable, ERC721AQueryable {
+    mapping(uint256 => string) tokenURIs;
 
-    event SignerChanged(address operator, address from, address to);
-    event BaseURIChanged(
-        address operator,
-        string fromBaseURI,
-        string toBaseURI
-    );
-    event Minted(address from, address to, uint256 tokenId);
+    event Minted(address to, uint256 tokenId, string svg);
 
-    constructor(
-        string memory _baseURI
-    ) ERC721A("MyfirstLayerSBT", "MFL2SBT") {
-        baseURI = _baseURI;
-    }
+    constructor() ERC721A("MyfirstLayer2SBT", "MFL2SBT") {}
 
-    function mint() external {
+    function mint(string calldata svg) external {
         require(balanceOf(_msgSender()) == 0, "You have already minted.");
+        require(bytes(svg).length > 0, "The svg string is empty.");
 
         uint256 tokenId = _nextTokenId();
         _safeMint(_msgSender(), 1);
+        tokenURIs[tokenId] = svg;
 
-        emit Minted(_msgSender(), _msgSender(), tokenId);
+        emit Minted(_msgSender(), tokenId, svg);
     }
 
     function approve(
         address,
         uint256
-    ) public payable override(ERC721A) {
+    ) public payable override(ERC721A, IERC721A) {
         revert("Cannot approve.");
     }
 
     function setApprovalForAll(
         address,
         bool
-    ) public pure override(ERC721A) {
+    ) public pure override(ERC721A, IERC721A) {
         revert("Cannot setApprovalForAll.");
     }
 
@@ -49,7 +42,7 @@ contract Myfirstlayer2SBT is Ownable, ERC721A {
         address from,
         address to,
         uint256 tokenId
-    ) public payable override(ERC721A) onlyOwner {
+    ) public payable override(ERC721A, IERC721A) onlyOwner {
         safeTransferFrom(from, to, tokenId, bytes(""));
     }
 
@@ -58,7 +51,7 @@ contract Myfirstlayer2SBT is Ownable, ERC721A {
         address to,
         uint256 tokenId,
         bytes memory _data
-    ) public payable override(ERC721A) onlyOwner {
+    ) public payable override(ERC721A, IERC721A) onlyOwner {
         _transferToken(from, to, tokenId, _data);
     }
 
@@ -66,22 +59,23 @@ contract Myfirstlayer2SBT is Ownable, ERC721A {
         address from,
         address to,
         uint256 tokenId
-    ) public payable override(ERC721A) onlyOwner {
+    ) public payable override(ERC721A, IERC721A) onlyOwner {
         _transferToken(from, to, tokenId, bytes(""));
     }
 
     function _transferToken(
-        address from,
-        address to,
-        uint256 tokenId,
+        address,
+        address,
+        uint256,
         bytes memory
-    ) private {
+    ) private pure {
         revert("Cannot transfer.");
     }
 
     function tokenURI(
         uint256 tokenId
-    ) public view override(ERC721A) returns (string memory) {
-        return string(abi.encodePacked(baseURI, tokenId));
+    ) public view override(ERC721A, IERC721A) returns (string memory) {
+        require(_exists(tokenId));
+        return tokenURIs[tokenId];
     }
 }
